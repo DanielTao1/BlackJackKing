@@ -1,1 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title>移动版21点</title>
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		body {
+			font-family: -apple-system, sans-serif;
+			background: #1a1a1a;
+			color: #fff;
+			min-height: 100vh;
+			padding: 10px;
+		}
+		.container {
+			max-width: 428px;
+			margin: 0 auto;
+			background: #2a2a2a;
+			border-radius: 12px;
+			padding: 15px;
+			box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+		}
+		.auth-box {
+			padding: 20px;
+			text-align: center;
+		}
+		.game-panel {
+			display: grid;
+			grid-template-columns: 1.5fr 1fr;
+			gap: 10px;
+			margin-top: 15px;
+		}
+		.game-area {
+			background: #333;
+			border-radius: 8px;
+			padding: 12px;
+		}
+		.leaderboard {
+			background: #333;
+			border-radius: 8px;
+			padding: 12px;
+			font-size: 12px;
+		}
+		.cards {
+			min-height: 90px;
+			padding: 10px;
+			background: #444;
+			border-radius: 6px;
+			margin: 8px 0;
+		}
+		.card-item {
+			display: inline-block;
+			margin: 3px;
+			padding: 5px 8px;
+			background: #555;
+			border-radius: 4px;
+			font-size: 12px;
+		}
+		.bet-grid {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 5px;
+			margin: 10px 0;
+		}
+		button {
+			padding: 8px;
+			border: none;
+			border-radius: 6px;
+			font-size: 12px;
+			background: #4CAF50;
+			color: white;
+			touch-action: manipulation;
+		}
+		.controls {
+			display: flex;
+			gap: 5px;
+			margin-top: 10px;
+		}
+		.money {
+			color: #FFD700;
+			font-size: 16px;
+			text-align: center;
+			margin: 10px 0;
+		}
+		input {
+			width: 100%;
+			padding: 8px;
+			margin: 8px 0;
+			background: #444;
+			border: 1px solid #555;
+			color: white;
+			border-radius: 6px;
+		}
+		#ad-container {
+			position: fixed;
+			bottom: 10px;
+			right: 10px;
+			width: 110px;
+			padding: 8px;
+			background: rgba(51,51,51,0.95);
+			border-radius: 8px;
+		}
+		#leaderboard-list {
+			list-style: none;
+			padding: 0;
+			margin: 8px 0;
+		}
+		#leaderboard-list li {
+			padding: 6px;
+			margin: 4px 0;
+			background: #444;
+			border-radius: 4px;
+			display: flex;
+			justify-content: space-between;
+		}
+		@media (max-width: 400px) {
+			.game-panel {
+				grid-template-columns: 1fr;
+			}
+			.container {
+				padding: 10px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<!-- 认证界面 -->
+	<div class="container" id="auth-box">
+		<div class="auth-box">
+			<h3>🎮 21点游戏</h3>
+			<input type="text" id="username" placeholder="账号（4位以上）">
+			<input type="password" id="password" placeholder="密码（6位以上）">
+			<div class="controls">
+				<button onclick="login()">登录</button>
+				<button onclick="register()">注册</button>
+			</div>
+		</div>
+	</div>
 
+	<!-- 游戏界面 -->
+	<div class="container" id="game-container" style="display:none">
+		<div class="money">💰 ¥<span id="current-money">0</span></div>
+		
+		<div class="game-panel">
+			<div class="game-area">
+				<div class="bet-grid">
+					<button onclick="placeBet(5000)">5千</button>
+					<button onclick="placeBet(10000)">1万</button>
+					<button onclick="placeBet(50000)">5万</button>
+					<button onclick="placeBet(100000)">10万</button>
+<button
+onclick="placeBet(300000)">30万</button>
+<button
+onclick="placeBet(500000)">50万</button>
+<button
+onclick="placeBet(1000000)">100万</button>
+<button
+onclick="placeBet(5000000)">500万</button>
+				</div>
+
+				<div id="game-controls" style="display:none">
+					<div class="cards">
+						<div>庄家 (<span id="dealer-score">0</span>)</div>
+						<div id="dealer-cards"></div>
+					</div>
+					<div class="cards">
+						<div>玩家 (<span id="player-score">0</span>)</div>
+						<div id="player-cards"></div>
+					</div>
+					<div class="controls">
+						<button onclick="hit()" style="background:#2196F3">要牌</button>
+						<button onclick="stand()" style="background:#FF5722">停牌</button>
+					</div>
+					<div id="game-result" style="text-align:center;margin:8px 0;color:#4CAF50"></div>
+				</div>
+			</div>
+
+			<div class="leaderboard">
+				<h4>🏆 富豪榜</h4>
+				<ul id="leaderboard-list"></ul>
+			</div>
+		</div>
+	</div>
+
+	<!-- 广告系统 -->
+	<div id="ad-container">
+		<button onclick="watchAd()" style="font-size:11px;padding:6px">📺 看广告+10万</button>
+		<div id="ad-status" style="font-size:10px;margin-top:4px"></div>
+	</div>
+
+<script>
+// 用户管理系统
+let users = JSON.parse(localStorage.getItem('bj_users')) || [];
+let currentUser = null;
+
+function login() {
+	const username = document.getElementById('username').value.trim();
+	const password = document.getElementById('password').value.trim();
+	
+	if(!username || !password) return alert('请输入完整信息');
+	
+	const user = users.find(u => u.username === username);
+	if(user?.password === password) {
+		currentUser = user;
+		startGame();
+	} else {
+		alert('账号或密码错误');
+	}
+}
+
+function register() {
+	const username = document.getElementById('username').value.trim();
+	const password = document.getElementById('password').value.trim();
+	
+	if(username.length < 4) return alert('账号至少4位');
+	if(password.length < 6) return alert('密码至少6位');
+	if(users.some(u => u.username === username)) return alert('账号已存在');
+	
+	const newUser = {
+		username,
+		password,
+		money: 100000,
+		ads: 0
+	};
+	users.push(newUser);
+	localStorage.setItem('bj_users', JSON.stringify(users));
+	currentUser = newUser;
+	startGame();
+}
+
+// 游戏核心逻辑
+let deck = [], dealerHand = [], playerHand = [], currentBet = 0, gameActive = false;
+
+function startGame() {
+	document.getElementById('auth-box').style.display = 'none';
+	document.getElementById('game-container').style.display = 'block';
+	updateMoney();
+	updateLeaderboard();
+}
+
+function initializeDeck() {
+	deck = [];
+	const suits = ['♠', '♣', '♥', '♦'];
+	const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+	suits.forEach(suit => values.forEach(value => deck.push({suit, value})));
+	for(let i = deck.length-1; i > 0; i--) {
+		const j = Math.floor(Math.random()*(i+1));
+		[deck[i], deck[j]] = [deck[j], deck[i]];
+	}
+}
+
+function calculateScore(hand) {
+	let score = 0, aces = 0;
+	for(const card of hand) {
+		if(card.value === 'A') aces++, score += 11;
+		else score += 'JQK'.includes(card.value) ? 10 : parseInt(card.value);
+	}
+	while(score > 21 && aces) score -= 10, aces--;
+	return score;
+}
+
+function updateDisplay() {
+	document.getElementById('dealer-cards').innerHTML = dealerHand.map((c,i) => 
+		`<span class="card-item" style="color:${['♥','♦'].includes(c.suit)?'red':'#fff'}">
+			${i===0 && gameActive ? '🂠' : c.value+c.suit}
+		</span>`
+	).join('');
+	
+	document.getElementById('player-cards').innerHTML = playerHand.map(c => 
+		`<span class="card-item" style="color:${['♥','♦'].includes(c.suit)?'red':'#fff'}">
+			${c.value}${c.suit}
+		</span>`
+	).join('');
+	
+	document.getElementById('dealer-score').textContent = gameActive ? 
+		calculateScore([dealerHand[0]]) : calculateScore(dealerHand);
+	document.getElementById('player-score').textContent = calculateScore(playerHand);
+}
+
+function placeBet(amount) {
+	if(!currentUser || gameActive) return;
+	if(currentUser.money < amount) return alert('资金不足');
+	
+	currentBet = amount;
+	currentUser.money -= amount;
+	initializeDeck();
+	dealerHand = [deck.pop()];
+	playerHand = [deck.pop(), deck.pop()];
+	gameActive = true;
+	
+	document.getElementById('game-controls').style.display = 'block';
+	updateMoney();
+	updateDisplay();
+}
+
+function hit() {
+	if(!gameActive) return;
+	playerHand.push(deck.pop());
+	updateDisplay();
+	if(calculateScore(playerHand) > 21) endGame('爆牌！庄家赢');
+}
+
+function stand() {
+	if(!gameActive) return;
+	while(calculateScore(dealerHand) < 17) dealerHand.push(deck.pop());
+	
+	const pScore = calculateScore(playerHand);
+	const dScore = calculateScore(dealerHand);
+	let result = '';
+	
+	if(pScore > 21) result = '玩家爆牌';
+	else if(dScore > 21) result = '庄家爆牌，+¥'+(currentBet*2), currentUser.money += currentBet*2;
+	else if(pScore > dScore) result = '玩家赢！+¥'+(currentBet*2), currentUser.money += currentBet*2;
+	else if(pScore === dScore) result = '平局，+¥'+currentBet, currentUser.money += currentBet;
+	else result = '庄家赢';
+	
+	endGame(result);
+}
+
+function endGame(msg) {
+	gameActive = false;
+	document.getElementById('game-result').textContent = msg;
+	updateMoney();
+	updateLeaderboard();
+	saveData();
+}
+
+// 辅助功能
+function updateMoney() {
+	document.getElementById('current-money').textContent = currentUser.money.toLocaleString();
+}
+
+function updateLeaderboard() {
+	const sorted = [...users].sort((a,b) => b.money - a.money).slice(0,5);
+	document.getElementById('leaderboard-list').innerHTML = sorted.map((u,i) => `
+		<li><span>${i+1}. ${u.username}</span> ¥${u.money.toLocaleString()}</li>
+	`).join('');
+}
+
+async function watchAd() {
+	const btn = document.getElementById('ad-container').querySelector('button');
+	const status = document.getElementById('ad-status');
+	btn.disabled = true;
+	status.textContent = '广告加载中...';
+	
+	await new Promise(r => setTimeout(r, 2000));
+	status.textContent = '播放中...';
+	
+	await new Promise(r => setTimeout(r, 10000));
+	
+	currentUser.money += 100000;
+	currentUser.ads++;
+	status.textContent = '+10万金币！';
+	updateMoney();
+	saveData();
+	
+	setTimeout(() => {
+		btn.disabled = false;
+		status.textContent = '';
+	}, 3000);
+}
+
+function saveData() {
+	localStorage.setItem('bj_users', JSON.stringify(users));
+	updateLeaderboard();
+}
+</script>
+</body>
+</html>
